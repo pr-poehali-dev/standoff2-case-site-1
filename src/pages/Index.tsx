@@ -49,6 +49,13 @@ const cases: CaseItem[] = [
   { id: 4, name: 'Апокалипсис', price: 2500, rarity: 'legendary', image: '💀', chance: 0 },
 ];
 
+const caseContents: Record<number, number[]> = {
+  1: [101, 102, 103, 104, 105, 106, 107, 201, 202, 203],
+  2: [104, 105, 106, 107, 201, 202, 203, 204, 205, 301],
+  3: [201, 202, 203, 204, 205, 301, 302, 303, 304, 401],
+  4: [301, 302, 303, 304, 401, 402, 403, 404],
+};
+
 const possibleItems: CaseItem[] = [
   // Common (65% total)
   { id: 101, name: 'AK-47 | Призрак', price: 45, rarity: 'common', image: '🔫', chance: 12 },
@@ -312,33 +319,46 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const generateRouletteItems = (winningItem: CaseItem) => {
+  const generateRouletteItems = (winningItem: CaseItem, caseId?: number) => {
     const items: CaseItem[] = [];
     const totalItems = 50;
     const winningIndex = 42;
+    
+    let poolItems = possibleItems;
+    if (caseId && caseContents[caseId]) {
+      poolItems = possibleItems.filter(item => caseContents[caseId].includes(item.id));
+    }
 
     for (let i = 0; i < totalItems; i++) {
       if (i === winningIndex) {
         items.push(winningItem);
       } else {
-        const randomItem = possibleItems[Math.floor(Math.random() * possibleItems.length)];
+        const randomItem = poolItems[Math.floor(Math.random() * poolItems.length)];
         items.push(randomItem);
       }
     }
     return items;
   };
 
-  const getRandomItemByChance = (): CaseItem => {
+  const getRandomItemByChance = (caseId: number): CaseItem => {
+    const availableItemIds = caseContents[caseId] || [];
+    const availableItems = possibleItems.filter(item => availableItemIds.includes(item.id));
+    
+    if (availableItems.length === 0) return possibleItems[0];
+    
     const random = Math.random() * 100;
     let cumulativeChance = 0;
-
-    for (const item of possibleItems) {
-      cumulativeChance += item.chance;
+    
+    const totalChance = availableItems.reduce((sum, item) => sum + item.chance, 0);
+    
+    for (const item of availableItems) {
+      const normalizedChance = (item.chance / totalChance) * 100;
+      cumulativeChance += normalizedChance;
       if (random <= cumulativeChance) {
         return item;
       }
     }
-    return possibleItems[0];
+    return availableItems[0];
   };
 
   const openCase = (caseItem: CaseItem) => {
@@ -353,8 +373,8 @@ const Index = () => {
 
     playOpenSound();
 
-    const winningItem = getRandomItemByChance();
-    const items = generateRouletteItems(winningItem);
+    const winningItem = getRandomItemByChance(caseItem.id);
+    const items = generateRouletteItems(winningItem, caseItem.id);
     setRouletteItems(items);
     setRouletteOffset(0);
 
