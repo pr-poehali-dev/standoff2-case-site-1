@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
+import confetti from 'canvas-confetti';
 
 interface CaseItem {
   id: number;
@@ -153,6 +154,49 @@ const Index = () => {
     }
   };
 
+  const triggerConfetti = (rarity: string) => {
+    if (rarity === 'legendary') {
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 7,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#FFD700', '#FFA500', '#FF6347', '#FF1493']
+        });
+        confetti({
+          particleCount: 7,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#FFD700', '#FFA500', '#FF6347', '#FF1493']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+    } else if (rarity === 'epic') {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#9333ea', '#a855f7', '#c084fc', '#e9d5ff']
+      });
+    } else if (rarity === 'rare') {
+      confetti({
+        particleCount: 50,
+        spread: 50,
+        origin: { y: 0.6 },
+        colors: ['#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe']
+      });
+    }
+  };
+
   const [leaderboard] = useState([
     { name: 'Player1', bestDrop: 'Dragon Knife', value: 3000 },
     { name: 'Player2', bestDrop: 'Golden Desert Eagle', value: 2000 },
@@ -222,6 +266,7 @@ const Index = () => {
         setHistory([{ item: winningItem, timestamp: new Date(), caseOpened: caseItem.name }, ...history]);
         setIsOpening(false);
         playWinSound(winningItem.rarity);
+        triggerConfetti(winningItem.rarity);
         toast.success(`Выпало: ${winningItem.name}!`);
       }, 4000);
     }, 100);
