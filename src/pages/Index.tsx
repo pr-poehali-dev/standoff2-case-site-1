@@ -93,6 +93,8 @@ const Index = () => {
   const rouletteRef = useRef<HTMLDivElement>(null);
   const [topUpAmount, setTopUpAmount] = useState('');
   const [topUpHistory, setTopUpHistory] = useState<TopUpHistoryItem[]>([]);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawHistory, setWithdrawHistory] = useState<{amount: number; timestamp: Date; status: string}[]>([]);
 
   const audioContext = useRef<AudioContext | null>(null);
 
@@ -323,6 +325,29 @@ const Index = () => {
     setTopUpAmount('');
   };
 
+  const handleWithdraw = () => {
+    const amount = parseFloat(withdrawAmount);
+    
+    if (isNaN(amount) || amount < 700) {
+      playSound(200, 0.3, 'sawtooth', 0.15);
+      toast.error('Минимальная сумма вывода — 700 рублей');
+      return;
+    }
+    
+    if (amount > balance) {
+      playSound(200, 0.3, 'sawtooth', 0.15);
+      toast.error('Недостаточно средств на балансе');
+      return;
+    }
+    
+    setBalance(balance - amount);
+    setWithdrawHistory([{ amount, timestamp: new Date(), status: 'В обработке' }, ...withdrawHistory]);
+    playSound(880, 0.1, 'sine', 0.2);
+    setTimeout(() => playSound(1047, 0.2, 'sine', 0.25), 100);
+    toast.success(`Заявка на вывод ${amount} ₽ принята!`);
+    setWithdrawAmount('');
+  };
+
   const closeDialog = () => {
     setSelectedCase(null);
     setWonItem(null);
@@ -476,11 +501,25 @@ const Index = () => {
                       <div className="text-4xl mb-2">{item.image}</div>
                       <CardTitle className="text-sm">{item.name}</CardTitle>
                     </CardHeader>
-                    <CardContent className="text-center">
+                    <CardContent className="text-center space-y-2">
                       <Badge className={`${rarityColors[item.rarity]} text-xs`}>
                         {item.rarity}
                       </Badge>
-                      <p className="text-accent font-semibold mt-2">{item.price} ₽</p>
+                      <p className="text-accent font-semibold">{item.price} ₽</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs"
+                        onClick={() => {
+                          setBalance(balance + item.price);
+                          setInventory(inventory.filter((_, i) => i !== index));
+                          playSound(440, 0.1, 'sine', 0.2);
+                          toast.success(`Продано за ${item.price} ₽`);
+                        }}
+                      >
+                        <Icon name="DollarSign" size={14} className="mr-1" />
+                        Продать
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -539,7 +578,7 @@ const Index = () => {
 
           <TabsContent value="promo" className="space-y-6">
             <div className="max-w-3xl mx-auto space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card>
                 <CardHeader className="text-center">
                   <div className="text-6xl mb-4">💳</div>
@@ -608,46 +647,86 @@ const Index = () => {
                   </div>
                 </CardContent>
               </Card>
-              </div>
 
               <Card>
+                <CardHeader className="text-center">
+                  <div className="text-6xl mb-4">💸</div>
+                  <CardTitle className="text-2xl">Вывод в игру</CardTitle>
+                  <CardDescription>Минимальная сумма вывода — 700₽</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Введи сумму (от 700₽)..."
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      min="700"
+                      className="flex-1"
+                    />
+                    <Button onClick={handleWithdraw} className="bg-green-600 hover:bg-green-700">
+                      <Icon name="ArrowDownToLine" size={18} className="mr-2" />
+                      Вывести
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {[700, 1000, 2500, 5000].map((amount) => (
+                      <Button
+                        key={amount}
+                        variant="outline"
+                        onClick={() => setWithdrawAmount(amount.toString())}
+                        className="hover:bg-green-600/20"
+                        disabled={balance < amount}
+                      >
+                        {amount} ₽
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              </div>
+
+              <Card className="lg:col-span-3">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Icon name="History" size={24} />
-                    История пополнений
+                    История транзакций
                   </CardTitle>
-                  <CardDescription>Все твои транзакции</CardDescription>
+                  <CardDescription>Все пополнения и выводы</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {topUpHistory.length === 0 ? (
+                  {topUpHistory.length === 0 && withdrawHistory.length === 0 ? (
                     <div className="text-center py-8">
                       <Icon name="Receipt" size={48} className="mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-muted-foreground">История пополнений пуста</p>
+                      <p className="text-muted-foreground">История транзакций пуста</p>
                     </div>
                   ) : (
                     <ScrollArea className="h-[400px] pr-4">
                       <div className="space-y-3">
-                        {topUpHistory.map((entry, index) => (
+                        {[...topUpHistory.map(e => ({...e, type: 'topup'})), ...withdrawHistory.map(e => ({...e, type: 'withdraw'}))]
+                          .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+                          .map((entry: any, index) => (
                           <div
                             key={index}
                             className="flex items-center justify-between p-4 border border-border rounded-lg bg-card/50 hover:bg-muted/30 transition-colors"
                           >
                             <div className="flex items-center gap-4">
                               <div className={`p-3 rounded-full ${
+                                entry.type === 'withdraw' ? 'bg-green-600/20' :
                                 entry.method === 'promo' ? 'bg-accent/20' : 'bg-primary/20'
                               }`}>
                                 <Icon 
-                                  name={entry.method === 'promo' ? 'Gift' : 'CreditCard'} 
+                                  name={entry.type === 'withdraw' ? 'ArrowDownToLine' : entry.method === 'promo' ? 'Gift' : 'CreditCard'} 
                                   size={24} 
-                                  className={entry.method === 'promo' ? 'text-accent' : 'text-primary'}
+                                  className={entry.type === 'withdraw' ? 'text-green-600' : entry.method === 'promo' ? 'text-accent' : 'text-primary'}
                                 />
                               </div>
                               <div>
-                                <p className="font-semibold text-lg">+{entry.amount} ₽</p>
+                                <p className="font-semibold text-lg">{entry.type === 'withdraw' ? '-' : '+'}{entry.amount} ₽</p>
                                 <p className="text-sm text-muted-foreground">
-                                  {entry.method === 'promo' 
-                                    ? `Промокод: ${entry.promoCode}` 
-                                    : 'Прямое пополнение'
+                                  {entry.type === 'withdraw' ? `Вывод в игру (${entry.status})` :
+                                   entry.method === 'promo' ? `Промокод: ${entry.promoCode}` : 'Прямое пополнение'
                                   }
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1">
@@ -662,9 +741,9 @@ const Index = () => {
                               </div>
                             </div>
                             <Badge 
-                              className={entry.method === 'promo' ? 'bg-accent' : 'bg-primary'}
+                              className={entry.type === 'withdraw' ? 'bg-green-600' : entry.method === 'promo' ? 'bg-accent' : 'bg-primary'}
                             >
-                              {entry.method === 'promo' ? 'Бонус' : 'Пополнение'}
+                              {entry.type === 'withdraw' ? 'Вывод' : entry.method === 'promo' ? 'Бонус' : 'Пополнение'}
                             </Badge>
                           </div>
                         ))}
