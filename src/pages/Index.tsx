@@ -50,14 +50,33 @@ const cases: CaseItem[] = [
 ];
 
 const possibleItems: CaseItem[] = [
-  { id: 101, name: 'AK-47 | Redline', price: 50, rarity: 'common', image: '🔫', chance: 35 },
-  { id: 102, name: 'Glock-18 | Fade', price: 75, rarity: 'common', image: '🎨', chance: 30 },
-  { id: 103, name: 'AWP | Dragon Lore', price: 200, rarity: 'rare', image: '🎯', chance: 15 },
-  { id: 104, name: 'M4A4 | Howl', price: 150, rarity: 'rare', image: '🐺', chance: 12 },
-  { id: 105, name: 'Knife | Karambit Fade', price: 800, rarity: 'epic', image: '🔪', chance: 5 },
-  { id: 106, name: 'Desert Eagle | Blaze', price: 600, rarity: 'epic', image: '🔥', chance: 2 },
-  { id: 107, name: 'Golden Desert Eagle', price: 2000, rarity: 'legendary', image: '⭐', chance: 0.8 },
-  { id: 108, name: 'Dragon Knife', price: 3000, rarity: 'legendary', image: '🐉', chance: 0.2 },
+  // Common (65% total)
+  { id: 101, name: 'AK-47 | Призрак', price: 45, rarity: 'common', image: '🔫', chance: 12 },
+  { id: 102, name: 'Glock-18 | Пустыня', price: 40, rarity: 'common', image: '🏜️', chance: 11 },
+  { id: 103, name: 'MP5 | Вихрь', price: 35, rarity: 'common', image: '🌀', chance: 10 },
+  { id: 104, name: 'M4A1 | Гипербeast', price: 50, rarity: 'common', image: '🦁', chance: 9 },
+  { id: 105, name: 'USP | Неон', price: 38, rarity: 'common', image: '💡', chance: 8 },
+  { id: 106, name: 'P90 | Азимов', price: 42, rarity: 'common', image: '🤖', chance: 8 },
+  { id: 107, name: 'FAMAS | Граффити', price: 30, rarity: 'common', image: '🎨', chance: 7 },
+  
+  // Rare (27% total)
+  { id: 201, name: 'AWP | Скелет', price: 180, rarity: 'rare', image: '💀', chance: 8 },
+  { id: 202, name: 'Desert Eagle | Метеор', price: 140, rarity: 'rare', image: '☄️', chance: 6 },
+  { id: 203, name: 'AK-47 | Огненный змей', price: 220, rarity: 'rare', image: '🐍', chance: 5 },
+  { id: 204, name: 'M4A1 | Кибер', price: 160, rarity: 'rare', image: '⚡', chance: 4 },
+  { id: 205, name: 'SCAR | Хаос', price: 130, rarity: 'rare', image: '💥', chance: 4 },
+  
+  // Epic (7% total)
+  { id: 301, name: 'Butterfly Knife | Градиент', price: 950, rarity: 'epic', image: '🦋', chance: 2.5 },
+  { id: 302, name: 'Karambit | Тигр', price: 1100, rarity: 'epic', image: '🐯', chance: 2 },
+  { id: 303, name: 'AWP | Пустынный мятежник', price: 750, rarity: 'epic', image: '🎯', chance: 1.5 },
+  { id: 304, name: 'Golden AK-47', price: 800, rarity: 'epic', image: '👑', chance: 1 },
+  
+  // Legendary (1% total)
+  { id: 401, name: 'Dragon Lore AWP', price: 3500, rarity: 'legendary', image: '🐉', chance: 0.4 },
+  { id: 402, name: 'Butterfly Gold', price: 4200, rarity: 'legendary', image: '✨', chance: 0.3 },
+  { id: 403, name: 'Karambit Fade', price: 5000, rarity: 'legendary', image: '🌈', chance: 0.2 },
+  { id: 404, name: 'M4A1 | Вой (Howl)', price: 6500, rarity: 'legendary', image: '🐺', chance: 0.1 },
 ];
 
 const rarityColors = {
@@ -94,9 +113,9 @@ const Index = () => {
   const [personalPromo] = useState(() => generatePersonalPromo());
   const [balance, setBalance] = useState(90000);
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
-    const dragonKnife = possibleItems.find(item => item.id === 108);
-    if (!dragonKnife) return [];
-    return Array.from({ length: 10 }, () => ({ ...dragonKnife, unboxedAt: new Date() }));
+    const dragonLore = possibleItems.find(item => item.id === 401);
+    if (!dragonLore) return [];
+    return Array.from({ length: 10 }, () => ({ ...dragonLore, unboxedAt: new Date() }));
   });
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isOpening, setIsOpening] = useState(false);
