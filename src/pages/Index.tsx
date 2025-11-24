@@ -82,7 +82,11 @@ const generatePlayerId = () => {
 const Index = () => {
   const [playerId] = useState(() => generatePlayerId());
   const [balance, setBalance] = useState(90000);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>(() => {
+    const dragonKnife = possibleItems.find(item => item.id === 108);
+    if (!dragonKnife) return [];
+    return Array.from({ length: 10 }, () => ({ ...dragonKnife, unboxedAt: new Date() }));
+  });
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isOpening, setIsOpening] = useState(false);
   const [selectedCase, setSelectedCase] = useState<CaseItem | null>(null);
