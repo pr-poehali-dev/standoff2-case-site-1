@@ -79,6 +79,7 @@ const Index = () => {
   const [rouletteItems, setRouletteItems] = useState<CaseItem[]>([]);
   const [rouletteOffset, setRouletteOffset] = useState(0);
   const rouletteRef = useRef<HTMLDivElement>(null);
+  const [topUpAmount, setTopUpAmount] = useState('');
 
   const audioContext = useRef<AudioContext | null>(null);
 
@@ -283,6 +284,28 @@ const Index = () => {
       playSound(200, 0.3, 'sawtooth', 0.15);
       toast.error('Неверный промокод');
     }
+  };
+
+  const handleTopUp = () => {
+    const amount = parseFloat(topUpAmount);
+    
+    if (isNaN(amount) || amount < 10) {
+      playSound(200, 0.3, 'sawtooth', 0.15);
+      toast.error('Минимальная сумма пополнения — 10 рублей');
+      return;
+    }
+    
+    if (amount > 100000) {
+      playSound(200, 0.3, 'sawtooth', 0.15);
+      toast.error('Максимальная сумма пополнения — 100 000 рублей');
+      return;
+    }
+    
+    setBalance(balance + amount);
+    playSound(880, 0.1, 'sine', 0.2);
+    setTimeout(() => playSound(1047, 0.2, 'sine', 0.25), 100);
+    toast.success(`Баланс пополнен на ${amount} ₽!`);
+    setTopUpAmount('');
   };
 
   const closeDialog = () => {
@@ -494,7 +517,44 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="promo" className="space-y-6">
-            <div className="max-w-xl mx-auto">
+            <div className="max-w-xl mx-auto space-y-6">
+              <Card>
+                <CardHeader className="text-center">
+                  <div className="text-6xl mb-4">💳</div>
+                  <CardTitle className="text-2xl">Пополнить баланс</CardTitle>
+                  <CardDescription>Минимальная сумма — 10 рублей</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Введи сумму (от 10₽)..."
+                      value={topUpAmount}
+                      onChange={(e) => setTopUpAmount(e.target.value)}
+                      min="10"
+                      className="flex-1"
+                    />
+                    <Button onClick={handleTopUp} className="bg-primary hover:bg-primary/80">
+                      <Icon name="Plus" size={18} className="mr-2" />
+                      Пополнить
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[50, 100, 500, 1000, 2500, 5000].map((amount) => (
+                      <Button
+                        key={amount}
+                        variant="outline"
+                        onClick={() => setTopUpAmount(amount.toString())}
+                        className="hover:bg-primary/20"
+                      >
+                        {amount} ₽
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader className="text-center">
                   <div className="text-6xl mb-4">🎁</div>
