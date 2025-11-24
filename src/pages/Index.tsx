@@ -76,7 +76,7 @@ const rarityGlow = {
 };
 
 const Index = () => {
-  const [balance, setBalance] = useState(1000);
+  const [balance, setBalance] = useState(90000);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isOpening, setIsOpening] = useState(false);
