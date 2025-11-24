@@ -580,11 +580,11 @@ const Index = () => {
                   <CardHeader className="text-center pb-2">
                     <div className="text-6xl mb-4 animate-float">{caseItem.image}</div>
                     <CardTitle className="text-xl">{caseItem.name}</CardTitle>
-                    <CardDescription>
-                      <Badge className={`${rarityColors[caseItem.rarity]} mt-2`}>
+                    <div className="mt-2">
+                      <Badge className={`${rarityColors[caseItem.rarity]}`}>
                         {caseItem.rarity.toUpperCase()}
                       </Badge>
-                    </CardDescription>
+                    </div>
                   </CardHeader>
                   <CardContent className="text-center space-y-4">
                     <div className="flex items-center justify-center gap-2 text-2xl font-bold text-accent">
