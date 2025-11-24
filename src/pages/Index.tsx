@@ -36,6 +36,12 @@ interface TopUpHistoryItem {
   promoCode?: string;
 }
 
+interface LiveDropItem {
+  playerName: string;
+  item: CaseItem;
+  timestamp: Date;
+}
+
 const cases: CaseItem[] = [
   { id: 1, name: 'Школьник', price: 100, rarity: 'common', image: '🎒', chance: 0 },
   { id: 2, name: 'BMW', price: 500, rarity: 'rare', image: '🚗', chance: 0 },
@@ -117,6 +123,8 @@ const Index = () => {
   const [rouletteColor, setRouletteColor] = useState<'red' | 'black' | 'green' | null>(null);
   const [rouletteResult, setRouletteResult] = useState<number | null>(null);
   const [isRouletteSpinning, setIsRouletteSpinning] = useState(false);
+  
+  const [liveDrops, setLiveDrops] = useState<LiveDropItem[]>([]);
 
   const audioContext = useRef<AudioContext | null>(null);
 
@@ -242,6 +250,27 @@ const Index = () => {
     { name: 'Player4', bestDrop: 'Desert Eagle | Blaze', value: 600 },
     { name: 'Player5', bestDrop: 'AWP | Dragon Lore', value: 200 },
   ]);
+  
+  const generateRandomPlayerName = () => {
+    const names = ['ProGamer', 'SkillzZ', 'LuckyOne', 'TopPlayer', 'CaseKing', 'DropMaster', 'EZ_WIN', 'GG_WP', 'Ninja', 'Shadow'];
+    const suffixes = ['123', '777', '999', 'Pro', 'YT', 'TTV', '2025', 'MVP'];
+    return `${names[Math.floor(Math.random() * names.length)]}${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
+  };
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const randomItem = possibleItems[Math.floor(Math.random() * possibleItems.length)];
+      const newDrop: LiveDropItem = {
+        playerName: generateRandomPlayerName(),
+        item: randomItem,
+        timestamp: new Date()
+      };
+      
+      setLiveDrops(prev => [newDrop, ...prev].slice(0, 50));
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const generateRouletteItems = (winningItem: CaseItem) => {
     const items: CaseItem[] = [];
@@ -302,6 +331,7 @@ const Index = () => {
         setWonItem(winningItem);
         setInventory([...inventory, { ...winningItem, unboxedAt: new Date() }]);
         setHistory([{ item: winningItem, timestamp: new Date(), caseOpened: caseItem.name }, ...history]);
+        setLiveDrops(prev => [{ playerName: playerId.split('-')[1], item: winningItem, timestamp: new Date() }, ...prev].slice(0, 50));
         setIsOpening(false);
         playWinSound(winningItem.rarity);
         triggerConfetti(winningItem.rarity);
@@ -386,6 +416,28 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <div className="bg-card/80 backdrop-blur-sm border-b border-primary/30 py-2 overflow-hidden">
+        <div className="flex gap-4 animate-scroll">
+          {liveDrops.map((drop, index) => (
+            <div
+              key={index}
+              className={`flex items-center gap-2 px-4 py-2 bg-card/50 rounded-lg border ${rarityBorders[drop.item.rarity]} whitespace-nowrap flex-shrink-0`}
+            >
+              <Icon name="User" size={14} className="text-muted-foreground" />
+              <span className="text-sm font-medium">{drop.playerName}</span>
+              <span className="text-lg">{drop.item.image}</span>
+              <span className={`text-sm font-semibold ${
+                drop.item.rarity === 'legendary' ? 'text-yellow-500' :
+                drop.item.rarity === 'epic' ? 'text-purple-500' :
+                drop.item.rarity === 'rare' ? 'text-blue-500' :
+                'text-gray-400'
+              }`}>{drop.item.name}</span>
+              <span className="text-xs text-accent">{drop.item.price}₽</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
