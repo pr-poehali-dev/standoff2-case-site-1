@@ -94,7 +94,8 @@ const Index = () => {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [topUpHistory, setTopUpHistory] = useState<TopUpHistoryItem[]>([]);
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [withdrawHistory, setWithdrawHistory] = useState<{amount: number; timestamp: Date; status: string}[]>([]);
+  const [withdrawNickname, setWithdrawNickname] = useState('');
+  const [withdrawHistory, setWithdrawHistory] = useState<{amount: number; timestamp: Date; status: string; nickname: string}[]>([]);
 
   const audioContext = useRef<AudioContext | null>(null);
 
@@ -340,12 +341,19 @@ const Index = () => {
       return;
     }
     
+    if (!withdrawNickname.trim()) {
+      playSound(200, 0.3, 'sawtooth', 0.15);
+      toast.error('Введи свой игровой ник');
+      return;
+    }
+    
     setBalance(balance - amount);
-    setWithdrawHistory([{ amount, timestamp: new Date(), status: 'В обработке' }, ...withdrawHistory]);
+    setWithdrawHistory([{ amount, timestamp: new Date(), status: 'В обработке', nickname: withdrawNickname }, ...withdrawHistory]);
     playSound(880, 0.1, 'sine', 0.2);
     setTimeout(() => playSound(1047, 0.2, 'sine', 0.25), 100);
-    toast.success(`Заявка на вывод ${amount} ₽ принята!`);
+    toast.success(`Заявка на вывод ${amount} ₽ для ${withdrawNickname} принята!`);
     setWithdrawAmount('');
+    setWithdrawNickname('');
   };
 
   const closeDialog = () => {
@@ -655,19 +663,34 @@ const Index = () => {
                   <CardDescription>Минимальная сумма вывода — 700₽</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder="Введи сумму (от 700₽)..."
-                      value={withdrawAmount}
-                      onChange={(e) => setWithdrawAmount(e.target.value)}
-                      min="700"
-                      className="flex-1"
-                    />
-                    <Button onClick={handleWithdraw} className="bg-green-600 hover:bg-green-700">
-                      <Icon name="ArrowDownToLine" size={18} className="mr-2" />
-                      Вывести
-                    </Button>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                        Твой игровой ник в Standoff 2
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="Например: ProGamer123"
+                        value={withdrawNickname}
+                        onChange={(e) => setWithdrawNickname(e.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Введи сумму (от 700₽)..."
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        min="700"
+                        className="flex-1"
+                      />
+                      <Button onClick={handleWithdraw} className="bg-green-600 hover:bg-green-700">
+                        <Icon name="ArrowDownToLine" size={18} className="mr-2" />
+                        Вывести
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -725,7 +748,7 @@ const Index = () => {
                               <div>
                                 <p className="font-semibold text-lg">{entry.type === 'withdraw' ? '-' : '+'}{entry.amount} ₽</p>
                                 <p className="text-sm text-muted-foreground">
-                                  {entry.type === 'withdraw' ? `Вывод в игру (${entry.status})` :
+                                  {entry.type === 'withdraw' ? `Вывод в игру → ${entry.nickname} (${entry.status})` :
                                    entry.method === 'promo' ? `Промокод: ${entry.promoCode}` : 'Прямое пополнение'
                                   }
                                 </p>
