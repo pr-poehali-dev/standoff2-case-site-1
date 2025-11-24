@@ -29,6 +29,13 @@ interface HistoryItem {
   caseOpened: string;
 }
 
+interface TopUpHistoryItem {
+  amount: number;
+  timestamp: Date;
+  method: 'direct' | 'promo';
+  promoCode?: string;
+}
+
 const cases: CaseItem[] = [
   { id: 1, name: 'Starter Case', price: 100, rarity: 'common', image: '🎁', chance: 0 },
   { id: 2, name: 'Gold Case', price: 500, rarity: 'rare', image: '💰', chance: 0 },
@@ -80,6 +87,7 @@ const Index = () => {
   const [rouletteOffset, setRouletteOffset] = useState(0);
   const rouletteRef = useRef<HTMLDivElement>(null);
   const [topUpAmount, setTopUpAmount] = useState('');
+  const [topUpHistory, setTopUpHistory] = useState<TopUpHistoryItem[]>([]);
 
   const audioContext = useRef<AudioContext | null>(null);
 
@@ -276,6 +284,7 @@ const Index = () => {
   const applyPromoCode = () => {
     if (promoCode.toLowerCase() === 'standoff') {
       setBalance(balance + 500);
+      setTopUpHistory([{ amount: 500, timestamp: new Date(), method: 'promo', promoCode: 'STANDOFF' }, ...topUpHistory]);
       playSound(880, 0.1, 'sine', 0.2);
       setTimeout(() => playSound(1047, 0.2, 'sine', 0.25), 100);
       toast.success('Промокод активирован! +500 к балансу');
@@ -302,6 +311,7 @@ const Index = () => {
     }
     
     setBalance(balance + amount);
+    setTopUpHistory([{ amount, timestamp: new Date(), method: 'direct' }, ...topUpHistory]);
     playSound(880, 0.1, 'sine', 0.2);
     setTimeout(() => playSound(1047, 0.2, 'sine', 0.25), 100);
     toast.success(`Баланс пополнен на ${amount} ₽!`);
@@ -353,8 +363,8 @@ const Index = () => {
               История
             </TabsTrigger>
             <TabsTrigger value="promo" className="flex items-center gap-2">
-              <Icon name="Gift" size={18} />
-              Промокоды
+              <Icon name="Wallet" size={18} />
+              Баланс
             </TabsTrigger>
             <TabsTrigger value="leaderboard" className="flex items-center gap-2">
               <Icon name="Trophy" size={18} />
@@ -517,7 +527,8 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="promo" className="space-y-6">
-            <div className="max-w-xl mx-auto space-y-6">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader className="text-center">
                   <div className="text-6xl mb-4">💳</div>
@@ -584,6 +595,71 @@ const Index = () => {
                       Попробуй промокод: <code className="bg-primary/20 px-2 py-1 rounded">STANDOFF</code>
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="History" size={24} />
+                    История пополнений
+                  </CardTitle>
+                  <CardDescription>Все твои транзакции</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {topUpHistory.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Icon name="Receipt" size={48} className="mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-muted-foreground">История пополнений пуста</p>
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[400px] pr-4">
+                      <div className="space-y-3">
+                        {topUpHistory.map((entry, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-4 border border-border rounded-lg bg-card/50 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={`p-3 rounded-full ${
+                                entry.method === 'promo' ? 'bg-accent/20' : 'bg-primary/20'
+                              }`}>
+                                <Icon 
+                                  name={entry.method === 'promo' ? 'Gift' : 'CreditCard'} 
+                                  size={24} 
+                                  className={entry.method === 'promo' ? 'text-accent' : 'text-primary'}
+                                />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-lg">+{entry.amount} ₽</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {entry.method === 'promo' 
+                                    ? `Промокод: ${entry.promoCode}` 
+                                    : 'Прямое пополнение'
+                                  }
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {entry.timestamp.toLocaleString('ru-RU', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge 
+                              className={entry.method === 'promo' ? 'bg-accent' : 'bg-primary'}
+                            >
+                              {entry.method === 'promo' ? 'Бонус' : 'Пополнение'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  )}
                 </CardContent>
               </Card>
             </div>
