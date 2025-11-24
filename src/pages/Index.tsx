@@ -79,6 +79,80 @@ const Index = () => {
   const [rouletteOffset, setRouletteOffset] = useState(0);
   const rouletteRef = useRef<HTMLDivElement>(null);
 
+  const audioContext = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+  }, []);
+
+  const playSound = (frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.3) => {
+    if (!audioContext.current) return;
+    
+    const oscillator = audioContext.current.createOscillator();
+    const gainNode = audioContext.current.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.current.destination);
+    
+    oscillator.frequency.value = frequency;
+    oscillator.type = type;
+    gainNode.gain.value = volume;
+    
+    oscillator.start(audioContext.current.currentTime);
+    oscillator.stop(audioContext.current.currentTime + duration);
+  };
+
+  const playOpenSound = () => {
+    playSound(440, 0.1, 'sine', 0.2);
+    setTimeout(() => playSound(554, 0.1, 'sine', 0.2), 100);
+    setTimeout(() => playSound(659, 0.15, 'sine', 0.25), 200);
+  };
+
+  const playRouletteSound = () => {
+    let interval: NodeJS.Timeout;
+    let delay = 50;
+    let count = 0;
+    
+    interval = setInterval(() => {
+      if (count > 40) {
+        clearInterval(interval);
+        return;
+      }
+      playSound(300 + count * 10, 0.05, 'square', 0.1);
+      count++;
+      delay += 10;
+      clearInterval(interval);
+      interval = setInterval(() => {
+        if (count > 40) {
+          clearInterval(interval);
+          return;
+        }
+        playSound(300 + count * 10, 0.05, 'square', 0.1);
+        count++;
+      }, delay);
+    }, delay);
+  };
+
+  const playWinSound = (rarity: string) => {
+    if (rarity === 'legendary') {
+      playSound(523, 0.15, 'sine', 0.3);
+      setTimeout(() => playSound(659, 0.15, 'sine', 0.3), 150);
+      setTimeout(() => playSound(784, 0.15, 'sine', 0.3), 300);
+      setTimeout(() => playSound(1047, 0.3, 'sine', 0.35), 450);
+    } else if (rarity === 'epic') {
+      playSound(523, 0.15, 'sine', 0.25);
+      setTimeout(() => playSound(659, 0.15, 'sine', 0.25), 150);
+      setTimeout(() => playSound(784, 0.25, 'sine', 0.3), 300);
+    } else if (rarity === 'rare') {
+      playSound(440, 0.15, 'sine', 0.2);
+      setTimeout(() => playSound(554, 0.2, 'sine', 0.25), 150);
+    } else {
+      playSound(330, 0.2, 'sine', 0.2);
+    }
+  };
+
   const [leaderboard] = useState([
     { name: 'Player1', bestDrop: 'Dragon Knife', value: 3000 },
     { name: 'Player2', bestDrop: 'Golden Desert Eagle', value: 2000 },
@@ -126,6 +200,8 @@ const Index = () => {
     setIsOpening(true);
     setBalance(balance - caseItem.price);
 
+    playOpenSound();
+
     const winningItem = getRandomItemByChance();
     const items = generateRouletteItems(winningItem);
     setRouletteItems(items);
@@ -137,6 +213,7 @@ const Index = () => {
       const centerOffset = window.innerWidth / 2 - itemWidth / 2;
       const targetOffset = -(winningIndex * itemWidth - centerOffset);
       
+      playRouletteSound();
       setRouletteOffset(targetOffset);
 
       setTimeout(() => {
@@ -144,6 +221,7 @@ const Index = () => {
         setInventory([...inventory, { ...winningItem, unboxedAt: new Date() }]);
         setHistory([{ item: winningItem, timestamp: new Date(), caseOpened: caseItem.name }, ...history]);
         setIsOpening(false);
+        playWinSound(winningItem.rarity);
         toast.success(`Выпало: ${winningItem.name}!`);
       }, 4000);
     }, 100);
@@ -152,9 +230,12 @@ const Index = () => {
   const applyPromoCode = () => {
     if (promoCode.toLowerCase() === 'standoff') {
       setBalance(balance + 500);
+      playSound(880, 0.1, 'sine', 0.2);
+      setTimeout(() => playSound(1047, 0.2, 'sine', 0.25), 100);
       toast.success('Промокод активирован! +500 к балансу');
       setPromoCode('');
     } else {
+      playSound(200, 0.3, 'sawtooth', 0.15);
       toast.error('Неверный промокод');
     }
   };
