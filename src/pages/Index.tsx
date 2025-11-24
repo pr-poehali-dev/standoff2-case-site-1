@@ -85,8 +85,13 @@ const generatePlayerId = () => {
   return `SO2-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
 };
 
+const generatePersonalPromo = () => {
+  return Math.random().toString(36).substring(2, 10).toUpperCase();
+};
+
 const Index = () => {
   const [playerId] = useState(() => generatePlayerId());
+  const [personalPromo] = useState(() => generatePersonalPromo());
   const [balance, setBalance] = useState(90000);
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
     const dragonKnife = possibleItems.find(item => item.id === 108);
@@ -341,12 +346,23 @@ const Index = () => {
   };
 
   const applyPromoCode = () => {
-    if (promoCode.toLowerCase() === 'standoff') {
+    const code = promoCode.toUpperCase();
+    
+    if (code === personalPromo) {
+      const bonusAmount = Math.round(balance * 0.45);
+      setBalance(balance + bonusAmount);
+      setTopUpHistory([{ amount: bonusAmount, timestamp: new Date(), method: 'promo', promoCode: personalPromo }, ...topUpHistory]);
+      playSound(880, 0.1, 'sine', 0.2);
+      setTimeout(() => playSound(1047, 0.2, 'sine', 0.25), 100);
+      triggerConfetti('legendary');
+      toast.success(`Личный промокод активирован! +${bonusAmount}₽ (45% от баланса)`);
+      setPromoCode('');
+    } else if (promoCode.toLowerCase() === 'standoff') {
       setBalance(balance + 500);
       setTopUpHistory([{ amount: 500, timestamp: new Date(), method: 'promo', promoCode: 'STANDOFF' }, ...topUpHistory]);
       playSound(880, 0.1, 'sine', 0.2);
       setTimeout(() => playSound(1047, 0.2, 'sine', 0.25), 100);
-      toast.success('Промокод активирован! +500 к балансу');
+      toast.success('Промокод активирован! +500₽ к балансу');
       setPromoCode('');
     } else {
       playSound(200, 0.3, 'sawtooth', 0.15);
@@ -721,13 +737,39 @@ const Index = () => {
                     </Button>
                   </div>
 
+                  <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 border border-yellow-600/50 rounded-lg p-4 space-y-2">
+                    <h3 className="font-semibold flex items-center gap-2 text-yellow-500">
+                      <Icon name="Sparkles" size={18} />
+                      Твой личный промокод:
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-yellow-600/30 text-yellow-300 px-3 py-2 rounded font-bold text-lg tracking-wider">
+                        {personalPromo}
+                      </code>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          navigator.clipboard.writeText(personalPromo);
+                          toast.success('Промокод скопирован!');
+                        }}
+                        className="hover:bg-yellow-600/20"
+                      >
+                        <Icon name="Copy" size={16} />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-yellow-200/70">
+                      Дает +45% от текущего баланса. Используй один раз!
+                    </p>
+                  </div>
+                  
                   <div className="bg-muted/30 rounded-lg p-4 space-y-2">
                     <h3 className="font-semibold flex items-center gap-2">
                       <Icon name="Info" size={18} />
-                      Подсказка:
+                      Другие промокоды:
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Попробуй промокод: <code className="bg-primary/20 px-2 py-1 rounded">STANDOFF</code>
+                      Попробуй: <code className="bg-primary/20 px-2 py-1 rounded">STANDOFF</code> (+500₽)
                     </p>
                   </div>
                 </CardContent>
