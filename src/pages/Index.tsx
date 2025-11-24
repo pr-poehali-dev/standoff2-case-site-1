@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
@@ -14,56 +15,106 @@ interface CaseItem {
   price: number;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   image: string;
+  chance: number;
 }
 
 interface InventoryItem extends CaseItem {
   unboxedAt: Date;
 }
 
+interface HistoryItem {
+  item: CaseItem;
+  timestamp: Date;
+  caseOpened: string;
+}
+
 const cases: CaseItem[] = [
-  { id: 1, name: 'Starter Case', price: 100, rarity: 'common', image: '🎁' },
-  { id: 2, name: 'Gold Case', price: 500, rarity: 'rare', image: '💰' },
-  { id: 3, name: 'Diamond Case', price: 1000, rarity: 'epic', image: '💎' },
-  { id: 4, name: 'Legendary Case', price: 2500, rarity: 'legendary', image: '👑' },
+  { id: 1, name: 'Starter Case', price: 100, rarity: 'common', image: '🎁', chance: 0 },
+  { id: 2, name: 'Gold Case', price: 500, rarity: 'rare', image: '💰', chance: 0 },
+  { id: 3, name: 'Diamond Case', price: 1000, rarity: 'epic', image: '💎', chance: 0 },
+  { id: 4, name: 'Legendary Case', price: 2500, rarity: 'legendary', image: '👑', chance: 0 },
 ];
 
 const possibleItems: CaseItem[] = [
-  { id: 101, name: 'AK-47 | Redline', price: 50, rarity: 'common', image: '🔫' },
-  { id: 102, name: 'AWP | Dragon Lore', price: 200, rarity: 'rare', image: '🎯' },
-  { id: 103, name: 'Knife | Karambit Fade', price: 800, rarity: 'epic', image: '🔪' },
-  { id: 104, name: 'Golden Desert Eagle', price: 2000, rarity: 'legendary', image: '⭐' },
-  { id: 105, name: 'M4A4 | Howl', price: 150, rarity: 'rare', image: '🐺' },
-  { id: 106, name: 'Glock-18 | Fade', price: 75, rarity: 'common', image: '🎨' },
+  { id: 101, name: 'AK-47 | Redline', price: 50, rarity: 'common', image: '🔫', chance: 35 },
+  { id: 102, name: 'Glock-18 | Fade', price: 75, rarity: 'common', image: '🎨', chance: 30 },
+  { id: 103, name: 'AWP | Dragon Lore', price: 200, rarity: 'rare', image: '🎯', chance: 15 },
+  { id: 104, name: 'M4A4 | Howl', price: 150, rarity: 'rare', image: '🐺', chance: 12 },
+  { id: 105, name: 'Knife | Karambit Fade', price: 800, rarity: 'epic', image: '🔪', chance: 5 },
+  { id: 106, name: 'Desert Eagle | Blaze', price: 600, rarity: 'epic', image: '🔥', chance: 2 },
+  { id: 107, name: 'Golden Desert Eagle', price: 2000, rarity: 'legendary', image: '⭐', chance: 0.8 },
+  { id: 108, name: 'Dragon Knife', price: 3000, rarity: 'legendary', image: '🐉', chance: 0.2 },
 ];
 
 const rarityColors = {
   common: 'bg-gray-500',
   rare: 'bg-blue-500',
-  epic: 'bg-purple-500',
+  epic: 'bg-purple-600',
   legendary: 'bg-yellow-500',
 };
 
 const rarityBorders = {
   common: 'border-gray-500',
   rare: 'border-blue-500',
-  epic: 'border-purple-500',
+  epic: 'border-purple-600',
   legendary: 'border-yellow-500',
+};
+
+const rarityGlow = {
+  common: 'shadow-[0_0_15px_rgba(107,114,128,0.5)]',
+  rare: 'shadow-[0_0_20px_rgba(59,130,246,0.6)]',
+  epic: 'shadow-[0_0_25px_rgba(147,51,234,0.7)]',
+  legendary: 'shadow-[0_0_30px_rgba(234,179,8,0.8)]',
 };
 
 const Index = () => {
   const [balance, setBalance] = useState(1000);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isOpening, setIsOpening] = useState(false);
   const [selectedCase, setSelectedCase] = useState<CaseItem | null>(null);
   const [wonItem, setWonItem] = useState<CaseItem | null>(null);
   const [promoCode, setPromoCode] = useState('');
+  const [rouletteItems, setRouletteItems] = useState<CaseItem[]>([]);
+  const [rouletteOffset, setRouletteOffset] = useState(0);
+  const rouletteRef = useRef<HTMLDivElement>(null);
+
   const [leaderboard] = useState([
-    { name: 'Player1', bestDrop: 'Golden Desert Eagle', value: 2000 },
-    { name: 'Player2', bestDrop: 'Knife | Karambit Fade', value: 800 },
-    { name: 'Player3', bestDrop: 'AWP | Dragon Lore', value: 200 },
-    { name: 'Player4', bestDrop: 'M4A4 | Howl', value: 150 },
-    { name: 'Player5', bestDrop: 'Glock-18 | Fade', value: 75 },
+    { name: 'Player1', bestDrop: 'Dragon Knife', value: 3000 },
+    { name: 'Player2', bestDrop: 'Golden Desert Eagle', value: 2000 },
+    { name: 'Player3', bestDrop: 'Knife | Karambit Fade', value: 800 },
+    { name: 'Player4', bestDrop: 'Desert Eagle | Blaze', value: 600 },
+    { name: 'Player5', bestDrop: 'AWP | Dragon Lore', value: 200 },
   ]);
+
+  const generateRouletteItems = (winningItem: CaseItem) => {
+    const items: CaseItem[] = [];
+    const totalItems = 50;
+    const winningIndex = 42;
+
+    for (let i = 0; i < totalItems; i++) {
+      if (i === winningIndex) {
+        items.push(winningItem);
+      } else {
+        const randomItem = possibleItems[Math.floor(Math.random() * possibleItems.length)];
+        items.push(randomItem);
+      }
+    }
+    return items;
+  };
+
+  const getRandomItemByChance = (): CaseItem => {
+    const random = Math.random() * 100;
+    let cumulativeChance = 0;
+
+    for (const item of possibleItems) {
+      cumulativeChance += item.chance;
+      if (random <= cumulativeChance) {
+        return item;
+      }
+    }
+    return possibleItems[0];
+  };
 
   const openCase = (caseItem: CaseItem) => {
     if (balance < caseItem.price) {
@@ -75,13 +126,27 @@ const Index = () => {
     setIsOpening(true);
     setBalance(balance - caseItem.price);
 
+    const winningItem = getRandomItemByChance();
+    const items = generateRouletteItems(winningItem);
+    setRouletteItems(items);
+    setRouletteOffset(0);
+
     setTimeout(() => {
-      const randomItem = possibleItems[Math.floor(Math.random() * possibleItems.length)];
-      setWonItem(randomItem);
-      setInventory([...inventory, { ...randomItem, unboxedAt: new Date() }]);
-      setIsOpening(false);
-      toast.success(`Выпало: ${randomItem.name}!`);
-    }, 3000);
+      const itemWidth = 150;
+      const winningIndex = 42;
+      const centerOffset = window.innerWidth / 2 - itemWidth / 2;
+      const targetOffset = -(winningIndex * itemWidth - centerOffset);
+      
+      setRouletteOffset(targetOffset);
+
+      setTimeout(() => {
+        setWonItem(winningItem);
+        setInventory([...inventory, { ...winningItem, unboxedAt: new Date() }]);
+        setHistory([{ item: winningItem, timestamp: new Date(), caseOpened: caseItem.name }, ...history]);
+        setIsOpening(false);
+        toast.success(`Выпало: ${winningItem.name}!`);
+      }, 4000);
+    }, 100);
   };
 
   const applyPromoCode = () => {
@@ -97,6 +162,8 @@ const Index = () => {
   const closeDialog = () => {
     setSelectedCase(null);
     setWonItem(null);
+    setRouletteItems([]);
+    setRouletteOffset(0);
   };
 
   return (
@@ -123,7 +190,7 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="cases" className="w-full">
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 mb-8">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-5 mb-8">
             <TabsTrigger value="cases" className="flex items-center gap-2">
               <Icon name="Package" size={18} />
               Кейсы
@@ -131,6 +198,10 @@ const Index = () => {
             <TabsTrigger value="inventory" className="flex items-center gap-2">
               <Icon name="Backpack" size={18} />
               Инвентарь
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <Icon name="History" size={18} />
+              История
             </TabsTrigger>
             <TabsTrigger value="promo" className="flex items-center gap-2">
               <Icon name="Gift" size={18} />
@@ -181,6 +252,36 @@ const Index = () => {
                 </Card>
               ))}
             </div>
+
+            <Card className="max-w-4xl mx-auto mt-12">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Percent" size={24} />
+                  Шансы выпадения
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {possibleItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{item.image}</span>
+                        <div>
+                          <p className="font-semibold">{item.name}</p>
+                          <Badge className={`${rarityColors[item.rarity]} text-xs`}>
+                            {item.rarity}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-accent">{item.chance}%</p>
+                        <p className="text-sm text-muted-foreground">{item.price} ₽</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="inventory" className="space-y-6">
@@ -200,7 +301,7 @@ const Index = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {inventory.map((item, index) => (
-                  <Card key={index} className={`border-2 ${rarityBorders[item.rarity]}`}>
+                  <Card key={index} className={`border-2 ${rarityBorders[item.rarity]} ${rarityGlow[item.rarity]}`}>
                     <CardHeader className="text-center pb-2">
                       <div className="text-4xl mb-2">{item.image}</div>
                       <CardTitle className="text-sm">{item.name}</CardTitle>
@@ -214,6 +315,55 @@ const Index = () => {
                   </Card>
                 ))}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-2">История открытий</h2>
+              <p className="text-muted-foreground">Твои последние дропы</p>
+            </div>
+
+            {history.length === 0 ? (
+              <Card className="max-w-md mx-auto">
+                <CardContent className="text-center py-12">
+                  <Icon name="Clock" size={64} className="mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground text-lg">История пуста</p>
+                  <p className="text-sm text-muted-foreground mt-2">Открой кейс, чтобы начать!</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="max-w-3xl mx-auto">
+                <CardContent className="p-6">
+                  <ScrollArea className="h-[500px] pr-4">
+                    <div className="space-y-3">
+                      {history.map((entry, index) => (
+                        <div
+                          key={index}
+                          className={`flex items-center justify-between p-4 border-2 ${rarityBorders[entry.item.rarity]} rounded-lg bg-card/50`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <span className="text-3xl">{entry.item.image}</span>
+                            <div>
+                              <p className="font-semibold">{entry.item.name}</p>
+                              <p className="text-xs text-muted-foreground">из {entry.caseOpened}</p>
+                              <Badge className={`${rarityColors[entry.item.rarity]} text-xs mt-1`}>
+                                {entry.item.rarity}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-accent">{entry.item.price} ₽</p>
+                            <p className="text-xs text-muted-foreground">
+                              {entry.timestamp.toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
 
@@ -289,33 +439,57 @@ const Index = () => {
       </main>
 
       <Dialog open={selectedCase !== null} onOpenChange={closeDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle className="text-center text-2xl">
-              {isOpening ? 'Открываем кейс...' : wonItem ? 'Поздравляем!' : ''}
+              {isOpening ? `Открываем ${selectedCase?.name}...` : wonItem ? 'Поздравляем!' : ''}
             </DialogTitle>
-            <DialogDescription className="text-center">
-              {isOpening && selectedCase && (
-                <div className="py-8">
-                  <div className="text-8xl animate-spin-slow mb-4">{selectedCase.image}</div>
-                  <p className="text-lg">Открываем {selectedCase.name}</p>
-                </div>
-              )}
-              {wonItem && !isOpening && (
-                <div className="py-8 space-y-4">
-                  <div className={`text-8xl animate-float mb-4`}>{wonItem.image}</div>
-                  <h3 className="text-2xl font-bold">{wonItem.name}</h3>
-                  <Badge className={`${rarityColors[wonItem.rarity]} text-lg py-1 px-4`}>
-                    {wonItem.rarity.toUpperCase()}
-                  </Badge>
-                  <div className="text-accent text-3xl font-bold">+{wonItem.price} ₽</div>
-                  <Button onClick={closeDialog} className="w-full mt-4">
-                    Забрать
-                  </Button>
-                </div>
-              )}
-            </DialogDescription>
           </DialogHeader>
+          
+          {isOpening && rouletteItems.length > 0 && (
+            <div className="py-8 overflow-hidden relative">
+              <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-primary z-10 transform -translate-x-1/2"></div>
+              <div 
+                ref={rouletteRef}
+                className="flex gap-4 transition-transform duration-[4000ms] ease-out"
+                style={{ transform: `translateX(${rouletteOffset}px)` }}
+              >
+                {rouletteItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className={`flex-shrink-0 w-[130px] h-[150px] border-2 ${rarityBorders[item.rarity]} rounded-lg flex flex-col items-center justify-center bg-card p-3 ${rarityGlow[item.rarity]}`}
+                  >
+                    <span className="text-4xl mb-2">{item.image}</span>
+                    <p className="text-xs text-center font-semibold truncate w-full">{item.name}</p>
+                    <Badge className={`${rarityColors[item.rarity]} text-xs mt-1`}>
+                      {item.rarity}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {wonItem && !isOpening && (
+            <div className="py-8 space-y-4">
+              <div className={`text-8xl animate-float mb-4 text-center ${rarityGlow[wonItem.rarity]} inline-block px-8 py-4 rounded-xl`}>
+                {wonItem.image}
+              </div>
+              <h3 className="text-2xl font-bold text-center">{wonItem.name}</h3>
+              <div className="flex justify-center gap-2">
+                <Badge className={`${rarityColors[wonItem.rarity]} text-lg py-1 px-4`}>
+                  {wonItem.rarity.toUpperCase()}
+                </Badge>
+                <Badge variant="outline" className="text-lg py-1 px-4">
+                  {wonItem.chance}% шанс
+                </Badge>
+              </div>
+              <div className="text-accent text-3xl font-bold text-center">+{wonItem.price} ₽</div>
+              <Button onClick={closeDialog} className="w-full mt-4 bg-primary hover:bg-primary/80">
+                Забрать в инвентарь
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
