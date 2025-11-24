@@ -37,10 +37,10 @@ interface TopUpHistoryItem {
 }
 
 const cases: CaseItem[] = [
-  { id: 1, name: 'Starter Case', price: 100, rarity: 'common', image: '🎁', chance: 0 },
-  { id: 2, name: 'Gold Case', price: 500, rarity: 'rare', image: '💰', chance: 0 },
-  { id: 3, name: 'Diamond Case', price: 1000, rarity: 'epic', image: '💎', chance: 0 },
-  { id: 4, name: 'Legendary Case', price: 2500, rarity: 'legendary', image: '👑', chance: 0 },
+  { id: 1, name: 'Школьник', price: 100, rarity: 'common', image: '🎒', chance: 0 },
+  { id: 2, name: 'BMW', price: 500, rarity: 'rare', image: '🚗', chance: 0 },
+  { id: 3, name: 'Yversy', price: 1000, rarity: 'epic', image: '💎', chance: 0 },
+  { id: 4, name: 'Апокалипсис', price: 2500, rarity: 'legendary', image: '💀', chance: 0 },
 ];
 
 const possibleItems: CaseItem[] = [
