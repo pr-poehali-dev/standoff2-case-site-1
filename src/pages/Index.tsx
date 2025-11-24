@@ -130,6 +130,22 @@ const Index = () => {
   const [isRouletteSpinning, setIsRouletteSpinning] = useState(false);
   
   const [liveDrops, setLiveDrops] = useState<LiveDropItem[]>([]);
+  
+  const [bonusWheelSpinning, setBonusWheelSpinning] = useState(false);
+  const [bonusWheelResult, setBonusWheelResult] = useState<number | null>(null);
+  const [bonusWheelRotation, setBonusWheelRotation] = useState(0);
+  const [lastBonusSpin, setLastBonusSpin] = useState<Date | null>(null);
+  
+  const bonusWheelPrizes = [
+    { label: '10₽', amount: 10, color: 'bg-gray-600' },
+    { label: '50₽', amount: 50, color: 'bg-blue-600' },
+    { label: '25₽', amount: 25, color: 'bg-gray-600' },
+    { label: '100₽', amount: 100, color: 'bg-purple-600' },
+    { label: '5₽', amount: 5, color: 'bg-gray-600' },
+    { label: '500₽', amount: 500, color: 'bg-yellow-600' },
+    { label: '15₽', amount: 15, color: 'bg-gray-600' },
+    { label: '250₽', amount: 250, color: 'bg-green-600' },
+  ];
 
   const audioContext = useRef<AudioContext | null>(null);
 
@@ -1369,6 +1385,117 @@ const Index = () => {
                 </CardContent>
               </Card>
             </div>
+            
+            <Card className="border-2 border-yellow-600/50 mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Trophy" className="text-yellow-500" size={24} />
+                  Бонусное колесо
+                </CardTitle>
+                <CardDescription>Крути бесплатно каждые 30 минут и получай бонусы!</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {!bonusWheelSpinning ? (
+                  <>
+                    <div className="relative w-64 h-64 mx-auto">
+                      <div 
+                        className="w-full h-full rounded-full border-8 border-yellow-600 relative overflow-hidden transition-transform duration-[5000ms] ease-out"
+                        style={{ transform: `rotate(${bonusWheelRotation}deg)` }}
+                      >
+                        {bonusWheelPrizes.map((prize, index) => {
+                          const rotation = (360 / bonusWheelPrizes.length) * index;
+                          return (
+                            <div
+                              key={index}
+                              className={`absolute w-1/2 h-1/2 origin-bottom-right ${prize.color} flex items-center justify-center font-bold text-white text-lg`}
+                              style={{
+                                transform: `rotate(${rotation}deg) skew(${-90 + 360 / bonusWheelPrizes.length}deg)`,
+                                left: '50%',
+                                top: '50%',
+                              }}
+                            >
+                              <span className="transform rotate-45">{prize.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[30px] border-t-red-600 z-10"></div>
+                    </div>
+                    
+                    {lastBonusSpin && new Date().getTime() - lastBonusSpin.getTime() < 30 * 60 * 1000 ? (
+                      <div className="text-center space-y-2">
+                        <p className="text-muted-foreground">Следующий спин через:</p>
+                        <p className="text-2xl font-bold text-yellow-500">
+                          {Math.ceil((30 * 60 * 1000 - (new Date().getTime() - lastBonusSpin.getTime())) / 1000 / 60)} мин
+                        </p>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => {
+                          setBonusWheelSpinning(true);
+                          playRouletteSound();
+                          
+                          const randomIndex = Math.floor(Math.random() * bonusWheelPrizes.length);
+                          const targetRotation = bonusWheelRotation + 360 * 5 + (360 / bonusWheelPrizes.length) * randomIndex;
+                          
+                          setBonusWheelRotation(targetRotation);
+                          
+                          setTimeout(() => {
+                            const prize = bonusWheelPrizes[randomIndex];
+                            setBonusWheelResult(randomIndex);
+                            setBalance(balance + prize.amount);
+                            setTopUpHistory([{ amount: prize.amount, timestamp: new Date(), method: 'promo', promoCode: 'BONUS_WHEEL' }, ...topUpHistory]);
+                            setLastBonusSpin(new Date());
+                            
+                            if (prize.amount >= 250) {
+                              playWinSound('legendary');
+                              triggerConfetti('legendary');
+                            } else if (prize.amount >= 100) {
+                              playWinSound('epic');
+                              triggerConfetti('epic');
+                            } else {
+                              playWinSound('rare');
+                            }
+                            
+                            toast.success(`Выиграно: ${prize.amount}₽!`);
+                            
+                            setTimeout(() => {
+                              setBonusWheelSpinning(false);
+                              setBonusWheelResult(null);
+                            }, 3000);
+                          }, 5000);
+                        }}
+                        className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-bold text-lg py-6"
+                      >
+                        <Icon name="Play" size={24} className="mr-2" />
+                        Крутить колесо (Бесплатно)
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-6xl mb-4 animate-spin-slow">🎰</div>
+                    <p className="text-lg font-semibold">
+                      {bonusWheelResult === null ? 'Крутим колесо...' : `Поздравляем! +${bonusWheelPrizes[bonusWheelResult].amount}₽`}
+                    </p>
+                  </div>
+                )}
+                
+                <div className="bg-muted/30 rounded-lg p-4">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <Icon name="Info" size={18} />
+                    Призы:
+                  </h4>
+                  <div className="grid grid-cols-4 gap-2 text-sm">
+                    {bonusWheelPrizes.map((prize, idx) => (
+                      <div key={idx} className={`${prize.color} text-white rounded px-2 py-1 text-center font-semibold`}>
+                        {prize.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
