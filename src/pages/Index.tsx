@@ -96,6 +96,23 @@ const Index = () => {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawNickname, setWithdrawNickname] = useState('');
   const [withdrawHistory, setWithdrawHistory] = useState<{amount: number; timestamp: Date; status: string; nickname: string}[]>([]);
+  
+  const [upgradeItem, setUpgradeItem] = useState<InventoryItem | null>(null);
+  const [upgradeTarget, setUpgradeTarget] = useState<CaseItem | null>(null);
+  const [upgradeResult, setUpgradeResult] = useState<'win' | 'lose' | null>(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  
+  const [ladderBet, setLadderBet] = useState('');
+  const [ladderStep, setLadderStep] = useState(0);
+  const [ladderMultiplier, setLadderMultiplier] = useState(1);
+  const [isLadderPlaying, setIsLadderPlaying] = useState(false);
+  
+  const [contractItems, setContractItems] = useState<InventoryItem[]>([]);
+  
+  const [rouletteBet, setRouletteBet] = useState('');
+  const [rouletteColor, setRouletteColor] = useState<'red' | 'black' | 'green' | null>(null);
+  const [rouletteResult, setRouletteResult] = useState<number | null>(null);
+  const [isRouletteSpinning, setIsRouletteSpinning] = useState(false);
 
   const audioContext = useRef<AudioContext | null>(null);
 
@@ -393,7 +410,7 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="cases" className="w-full">
-          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-5 mb-8">
+          <TabsList className="grid w-full max-w-4xl mx-auto grid-cols-6 mb-8">
             <TabsTrigger value="cases" className="flex items-center gap-2">
               <Icon name="Package" size={18} />
               Кейсы
@@ -413,6 +430,10 @@ const Index = () => {
             <TabsTrigger value="leaderboard" className="flex items-center gap-2">
               <Icon name="Trophy" size={18} />
               Рейтинг
+            </TabsTrigger>
+            <TabsTrigger value="games" className="flex items-center gap-2">
+              <Icon name="Gamepad2" size={18} />
+              Игры
             </TabsTrigger>
           </TabsList>
 
@@ -809,6 +830,447 @@ const Index = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="games" className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-2">Мини-игры</h2>
+              <p className="text-muted-foreground">Испытай удачу в играх на баланс</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-2 border-purple-600/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="ArrowUpCircle" className="text-purple-500" size={24} />
+                    Апгрейд
+                  </CardTitle>
+                  <CardDescription>Улучши предмет из инвентаря на более дорогой</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!isUpgrading ? (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Выбери предмет для апгрейда</label>
+                        <ScrollArea className="h-32 border rounded-lg p-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            {inventory.map((item, idx) => (
+                              <div
+                                key={idx}
+                                onClick={() => setUpgradeItem(item)}
+                                className={`cursor-pointer p-2 border-2 rounded-lg text-center hover:scale-105 transition-transform ${
+                                  upgradeItem === item ? rarityBorders[item.rarity] : 'border-border'
+                                }`}
+                              >
+                                <div className="text-2xl">{item.image}</div>
+                                <p className="text-xs truncate">{item.name}</p>
+                                <p className="text-xs text-accent">{item.price}₽</p>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                      
+                      {upgradeItem && (
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Выбери целевой предмет (шанс: {upgradeItem.price > 0 ? Math.round((upgradeItem.price / (upgradeItem.price * 2)) * 100) : 50}%)</label>
+                          <ScrollArea className="h-32 border rounded-lg p-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              {possibleItems.filter(i => i.price > upgradeItem.price).map((item) => (
+                                <div
+                                  key={item.id}
+                                  onClick={() => setUpgradeTarget(item)}
+                                  className={`cursor-pointer p-2 border-2 rounded-lg text-center hover:scale-105 transition-transform ${
+                                    upgradeTarget?.id === item.id ? rarityBorders[item.rarity] : 'border-border'
+                                  }`}
+                                >
+                                  <div className="text-2xl">{item.image}</div>
+                                  <p className="text-xs truncate">{item.name}</p>
+                                  <p className="text-xs text-accent">{item.price}₽</p>
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      )}
+                      
+                      <Button
+                        onClick={() => {
+                          if (!upgradeItem || !upgradeTarget) {
+                            toast.error('Выбери оба предмета!');
+                            return;
+                          }
+                          setIsUpgrading(true);
+                          playSound(440, 0.2, 'sine', 0.2);
+                          setTimeout(() => {
+                            const chance = (upgradeItem.price / upgradeTarget.price) * 100;
+                            const success = Math.random() * 100 < chance;
+                            setUpgradeResult(success ? 'win' : 'lose');
+                            
+                            if (success) {
+                              const itemIndex = inventory.indexOf(upgradeItem);
+                              const newInv = [...inventory];
+                              newInv.splice(itemIndex, 1);
+                              setInventory([...newInv, { ...upgradeTarget, unboxedAt: new Date() }]);
+                              playWinSound('epic');
+                              triggerConfetti('epic');
+                              toast.success(`Апгрейд успешен! Получен ${upgradeTarget.name}`);
+                            } else {
+                              const itemIndex = inventory.indexOf(upgradeItem);
+                              const newInv = [...inventory];
+                              newInv.splice(itemIndex, 1);
+                              setInventory(newInv);
+                              playSound(200, 0.5, 'sawtooth', 0.2);
+                              toast.error('Апгрейд провален!');
+                            }
+                            
+                            setTimeout(() => {
+                              setIsUpgrading(false);
+                              setUpgradeResult(null);
+                              setUpgradeItem(null);
+                              setUpgradeTarget(null);
+                            }, 2000);
+                          }, 2000);
+                        }}
+                        disabled={!upgradeItem || !upgradeTarget}
+                        className="w-full bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Icon name="Zap" size={18} className="mr-2" />
+                        Улучшить
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-6xl mb-4 animate-spin-slow">{upgradeResult === 'win' ? '✨' : upgradeResult === 'lose' ? '💥' : '⚡'}</div>
+                      <p className="text-lg font-semibold">
+                        {upgradeResult === null ? 'Апгрейд...' : upgradeResult === 'win' ? 'Успех!' : 'Провал!'}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-blue-600/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="TrendingUp" className="text-blue-500" size={24} />
+                    Лесенка
+                  </CardTitle>
+                  <CardDescription>Поднимайся по лесенке и увеличивай выигрыш</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!isLadderPlaying ? (
+                    <>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Ставка (от 10₽)"
+                          value={ladderBet}
+                          onChange={(e) => setLadderBet(e.target.value)}
+                          min="10"
+                        />
+                        <Button
+                          onClick={() => {
+                            const bet = parseFloat(ladderBet);
+                            if (isNaN(bet) || bet < 10) {
+                              toast.error('Минимальная ставка 10₽');
+                              return;
+                            }
+                            if (bet > balance) {
+                              toast.error('Недостаточно средств');
+                              return;
+                            }
+                            setBalance(balance - bet);
+                            setIsLadderPlaying(true);
+                            setLadderStep(0);
+                            setLadderMultiplier(1);
+                            playSound(440, 0.1, 'sine', 0.2);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          Начать
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((step) => {
+                          const multipliers = [20, 15, 10, 7, 5, 3.5, 2.5, 2, 1.5, 1.2];
+                          const mult = multipliers[10 - step];
+                          const isPassed = ladderStep > (10 - step);
+                          const isCurrent = ladderStep === (10 - step);
+                          
+                          return (
+                            <div
+                              key={step}
+                              className={`p-3 rounded-lg border-2 transition-all ${
+                                isPassed ? 'bg-green-600/20 border-green-600' :
+                                isCurrent ? 'bg-blue-600/20 border-blue-600 animate-pulse' :
+                                'bg-muted/20 border-border'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-semibold">Ступень {step}</span>
+                                <span className="text-accent font-bold">x{mult}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            const chance = 50 - (ladderStep * 3);
+                            const success = Math.random() * 100 < chance;
+                            
+                            if (success) {
+                              const multipliers = [1.2, 1.5, 2, 2.5, 3.5, 5, 7, 10, 15, 20];
+                              setLadderStep(ladderStep + 1);
+                              setLadderMultiplier(multipliers[ladderStep]);
+                              playSound(523 + ladderStep * 50, 0.1, 'sine', 0.2);
+                              
+                              if (ladderStep === 9) {
+                                const bet = parseFloat(ladderBet);
+                                const winAmount = Math.round(bet * 20);
+                                setBalance(balance + winAmount);
+                                triggerConfetti('legendary');
+                                toast.success(`Победа! +${winAmount}₽`);
+                                setIsLadderPlaying(false);
+                              }
+                            } else {
+                              playSound(200, 0.5, 'sawtooth', 0.2);
+                              toast.error('Проигрыш!');
+                              setIsLadderPlaying(false);
+                            }
+                          }}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Icon name="ArrowUp" size={18} className="mr-2" />
+                          Вверх
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const bet = parseFloat(ladderBet);
+                            const winAmount = Math.round(bet * ladderMultiplier);
+                            setBalance(balance + winAmount);
+                            playSound(659, 0.2, 'sine', 0.25);
+                            toast.success(`Забрано ${winAmount}₽ (x${ladderMultiplier})`);
+                            setIsLadderPlaying(false);
+                          }}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <Icon name="Download" size={18} className="mr-2" />
+                          Забрать
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-orange-600/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="FileText" className="text-orange-500" size={24} />
+                    Контракты
+                  </CardTitle>
+                  <CardDescription>Обменяй 3 предмета на 1 случайный</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Выбери 3 предмета (выбрано: {contractItems.length}/3)</label>
+                    <ScrollArea className="h-48 border rounded-lg p-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        {inventory.map((item, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => {
+                              if (contractItems.includes(item)) {
+                                setContractItems(contractItems.filter(i => i !== item));
+                              } else if (contractItems.length < 3) {
+                                setContractItems([...contractItems, item]);
+                              }
+                            }}
+                            className={`cursor-pointer p-2 border-2 rounded-lg text-center hover:scale-105 transition-transform ${
+                              contractItems.includes(item) ? 'border-orange-600 bg-orange-600/20' : 'border-border'
+                            }`}
+                          >
+                            <div className="text-2xl">{item.image}</div>
+                            <p className="text-xs truncate">{item.name}</p>
+                            <p className="text-xs text-accent">{item.price}₽</p>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                  
+                  <Button
+                    onClick={() => {
+                      if (contractItems.length !== 3) {
+                        toast.error('Выбери ровно 3 предмета!');
+                        return;
+                      }
+                      
+                      const avgPrice = contractItems.reduce((sum, i) => sum + i.price, 0) / 3;
+                      const eligibleItems = possibleItems.filter(i => i.price >= avgPrice * 0.5 && i.price <= avgPrice * 2);
+                      const resultItem = eligibleItems[Math.floor(Math.random() * eligibleItems.length)];
+                      
+                      contractItems.forEach(item => {
+                        const idx = inventory.indexOf(item);
+                        if (idx > -1) {
+                          const newInv = [...inventory];
+                          newInv.splice(idx, 1);
+                          setInventory(newInv);
+                        }
+                      });
+                      
+                      setInventory([...inventory, { ...resultItem, unboxedAt: new Date() }]);
+                      setContractItems([]);
+                      playWinSound(resultItem.rarity);
+                      triggerConfetti(resultItem.rarity);
+                      toast.success(`Получен: ${resultItem.name}!`);
+                    }}
+                    disabled={contractItems.length !== 3}
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                  >
+                    <Icon name="Repeat" size={18} className="mr-2" />
+                    Обменять
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-red-600/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="CircleDot" className="text-red-500" size={24} />
+                    Рулетка
+                  </CardTitle>
+                  <CardDescription>Ставь на красное (x2), черное (x2) или зеленое (x14)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!isRouletteSpinning ? (
+                    <>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Ставка (от 10₽)"
+                          value={rouletteBet}
+                          onChange={(e) => setRouletteBet(e.target.value)}
+                          min="10"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button
+                          onClick={() => setRouletteColor('red')}
+                          className={`h-20 ${rouletteColor === 'red' ? 'ring-2 ring-white' : ''} bg-red-600 hover:bg-red-700`}
+                        >
+                          <div className="text-center">
+                            <div className="text-2xl mb-1">🔴</div>
+                            <div className="text-xs">x2</div>
+                          </div>
+                        </Button>
+                        <Button
+                          onClick={() => setRouletteColor('black')}
+                          className={`h-20 ${rouletteColor === 'black' ? 'ring-2 ring-white' : ''} bg-gray-900 hover:bg-gray-800`}
+                        >
+                          <div className="text-center">
+                            <div className="text-2xl mb-1">⚫</div>
+                            <div className="text-xs">x2</div>
+                          </div>
+                        </Button>
+                        <Button
+                          onClick={() => setRouletteColor('green')}
+                          className={`h-20 ${rouletteColor === 'green' ? 'ring-2 ring-white' : ''} bg-green-600 hover:bg-green-700`}
+                        >
+                          <div className="text-center">
+                            <div className="text-2xl mb-1">🟢</div>
+                            <div className="text-xs">x14</div>
+                          </div>
+                        </Button>
+                      </div>
+                      
+                      <Button
+                        onClick={() => {
+                          const bet = parseFloat(rouletteBet);
+                          if (isNaN(bet) || bet < 10) {
+                            toast.error('Минимальная ставка 10₽');
+                            return;
+                          }
+                          if (bet > balance) {
+                            toast.error('Недостаточно средств');
+                            return;
+                          }
+                          if (!rouletteColor) {
+                            toast.error('Выбери цвет!');
+                            return;
+                          }
+                          
+                          setBalance(balance - bet);
+                          setIsRouletteSpinning(true);
+                          playRouletteSound();
+                          
+                          setTimeout(() => {
+                            const random = Math.random() * 100;
+                            let resultNum: number;
+                            let resultColor: 'red' | 'black' | 'green';
+                            
+                            if (random < 7) {
+                              resultNum = 0;
+                              resultColor = 'green';
+                            } else if (random < 53.5) {
+                              resultNum = Math.floor(Math.random() * 7) * 2 + 1;
+                              resultColor = 'red';
+                            } else {
+                              resultNum = Math.floor(Math.random() * 7) * 2 + 2;
+                              resultColor = 'black';
+                            }
+                            
+                            setRouletteResult(resultNum);
+                            
+                            setTimeout(() => {
+                              if (resultColor === rouletteColor) {
+                                const multiplier = resultColor === 'green' ? 14 : 2;
+                                const winAmount = Math.round(bet * multiplier);
+                                setBalance(balance + winAmount);
+                                playWinSound(resultColor === 'green' ? 'legendary' : 'rare');
+                                triggerConfetti(resultColor === 'green' ? 'legendary' : 'rare');
+                                toast.success(`Победа! +${winAmount}₽ (x${multiplier})`);
+                              } else {
+                                playSound(200, 0.5, 'sawtooth', 0.2);
+                                toast.error('Проигрыш!');
+                              }
+                              
+                              setTimeout(() => {
+                                setIsRouletteSpinning(false);
+                                setRouletteResult(null);
+                                setRouletteColor(null);
+                              }, 2000);
+                            }, 1000);
+                          }, 3000);
+                        }}
+                        className="w-full bg-red-600 hover:bg-red-700"
+                      >
+                        <Icon name="Play" size={18} className="mr-2" />
+                        Крутить
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-6xl mb-4 animate-spin">
+                        {rouletteResult === null ? '🎰' : rouletteResult === 0 ? '🟢' : rouletteResult % 2 === 1 ? '🔴' : '⚫'}
+                      </div>
+                      <p className="text-lg font-semibold">
+                        {rouletteResult === null ? 'Крутим...' : `Выпало: ${rouletteResult}`}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </main>
