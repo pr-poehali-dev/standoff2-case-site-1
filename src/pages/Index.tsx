@@ -75,7 +75,12 @@ const rarityGlow = {
   legendary: 'shadow-[0_0_30px_rgba(234,179,8,0.8)]',
 };
 
+const generatePlayerId = () => {
+  return `SO2-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+};
+
 const Index = () => {
+  const [playerId] = useState(() => generatePlayerId());
   const [balance, setBalance] = useState(90000);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -336,6 +341,12 @@ const Index = () => {
             </h1>
           </div>
           <div className="flex items-center gap-4">
+            <Card className="bg-card border-border/50">
+              <CardContent className="p-3 flex items-center gap-2">
+                <Icon name="User" className="text-primary" size={18} />
+                <span className="text-sm font-mono text-muted-foreground">{playerId}</span>
+              </CardContent>
+            </Card>
             <Card className="bg-card border-primary/20">
               <CardContent className="p-3 flex items-center gap-2">
                 <Icon name="Wallet" className="text-accent" size={20} />
